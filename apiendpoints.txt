@@ -1,0 +1,9 @@
+API Endpoints
+
+Create User: POST http://localhost:8080/users
+
+Get User: GET http://localhost:8080/users/{id}
+
+Update User: PUT http://localhost:8080/users/{id}
+
+Delete User: DELETE http://localhost:8080/users/{id}
