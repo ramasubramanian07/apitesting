@@ -1,0 +1,128 @@
+json data:
+
+{
+  "users": []
+}
+
+cmd:
+
+json-server --watch db.json --port 3000
+
+dependency:
+
+<dependencies>
+    <!-- RestAssured for API testing -->
+    <dependency>
+        <groupId>io.rest-assured</groupId>
+        <artifactId>rest-assured</artifactId>
+        <version>5.3.0</version>
+        <scope>test</scope>
+    </dependency>
+
+    <!-- TestNG for test execution -->
+    <dependency>
+        <groupId>org.testng</groupId>
+        <artifactId>testng</artifactId>
+        <version>7.4.0</version>
+        <scope>test</scope>
+    </dependency>
+
+    <!-- JSON Parser -->
+    <dependency>
+        <groupId>org.json</groupId>
+        <artifactId>json</artifactId>
+        <version>20210307</version>
+    </dependency>
+</dependencies>
+
+code:
+
+import static io.restassured.RestAssured.*;
+import static org.hamcrest.Matchers.*;
+
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
+import org.json.JSONObject;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
+public class UserManagementTest {
+
+    String baseURI = "http://localhost:3000"; // Mock API URL
+    String userId; // Store created user ID
+
+    @Test(priority = 1)
+    public void testCreateUser() {
+        JSONObject requestParams = new JSONObject();
+        requestParams.put("username", "testUser");
+        requestParams.put("email", "testuser@example.com");
+        requestParams.put("password", "password123");
+
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .body(requestParams.toString())
+                .when()
+                .post(baseURI + "/users")
+                .then()
+                .statusCode(201)
+                .extract().response();
+
+        userId = response.jsonPath().getString("id");
+        Assert.assertNotNull(userId, "User ID should not be null");
+        Assert.assertEquals(response.jsonPath().getString("message"), "User created successfully.");
+        System.out.println("User created with ID: " + userId);
+    }
+
+    @Test(priority = 2, dependsOnMethods = "testCreateUser")
+    public void testGetUserDetails() {
+        Response response = given()
+                .when()
+                .get(baseURI + "/users/" + userId)
+                .then()
+                .statusCode(200)
+                .extract().response();
+
+        Assert.assertEquals(response.jsonPath().getString("username"), "testUser");
+        Assert.assertEquals(response.jsonPath().getString("email"), "testuser@example.com");
+        System.out.println("User details fetched successfully.");
+    }
+
+    @Test(priority = 3, dependsOnMethods = "testGetUserDetails")
+    public void testUpdateUser() {
+        JSONObject requestParams = new JSONObject();
+        requestParams.put("email", "newemail@example.com");
+
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .body(requestParams.toString())
+                .when()
+                .put(baseURI + "/users/" + userId)
+                .then()
+                .statusCode(200)
+                .extract().response();
+
+        Assert.assertEquals(response.jsonPath().getString("message"), "User updated successfully.");
+        System.out.println("User updated successfully.");
+    }
+
+    @Test(priority = 4, dependsOnMethods = "testUpdateUser")
+    public void testDeleteUser() {
+        Response deleteResponse = given()
+                .when()
+                .delete(baseURI + "/users/" + userId)
+                .then()
+                .statusCode(200)
+                .extract().response();
+
+        Assert.assertEquals(deleteResponse.jsonPath().getString("message"), "User deleted successfully.");
+        System.out.println("User deleted successfully.");
+
+        // Verify deletion
+        given()
+                .when()
+                .get(baseURI + "/users/" + userId)
+                .then()
+                .statusCode(404);
+        System.out.println("User not found after deletion.");
+    }
+}
